@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#22124d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Blocos Mágicos">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Blocos Mágicos</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:radial-gradient(120% 80% at 50% 0%,#4b2c93 0%,#22124d 55%,#140a2e 100%);
+  color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:max(8px,env(safe-area-inset-top,0px)) 12px max(10px,env(safe-area-inset-bottom,0px));
+  user-select:none;-webkit-user-select:none;touch-action:none;
+}
+header{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.box{min-width:88px;text-align:center;background:rgba(255,255,255,.1);border-radius:16px;padding:6px 12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;opacity:.75;font-weight:700}
+.value{font-size:26px;font-weight:900;line-height:1.15}
+.bump{animation:bump .4s}
+@keyframes bump{50%{transform:scale(1.25)}}
+.title{font-size:20px;font-weight:900;text-align:center;letter-spacing:.5px;background:linear-gradient(90deg,#ffe066,#ff7eb6,#7ee8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+main{display:flex;flex-direction:column;align-items:center;gap:10px}
+#hint{font-size:16px;opacity:.9;height:24px;transition:opacity .6s;text-align:center}
+#board{
+  width:min(92vw,400px,calc(100dvh - 330px));aspect-ratio:1;padding:8px;border-radius:20px;
+  background:rgba(0,0,0,.25);box-shadow:inset 0 2px 8px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.35);
+}
+#grid{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:4px;width:100%;height:100%}
+.cell{border-radius:7px;background:rgba(255,255,255,.07);box-shadow:inset 0 1px 2px rgba(0,0,0,.25)}
+.cell.on{background:var(--c);box-shadow:inset 0 4px 0 rgba(255,255,255,.35),inset 0 -4px 0 rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.25)}
+.cell.prev{background:var(--c);opacity:.4;box-shadow:none}
+.cell.clear{animation:boom .38s forwards}
+@keyframes boom{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(0);opacity:0}}
+#tray{width:100%;max-width:420px;display:flex;gap:8px;justify-content:space-around;align-items:stretch;padding-bottom:6px}
+.slot{flex:1;min-height:120px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:20px;touch-action:none;cursor:grab;transition:transform .2s}
+.slot:active{transform:scale(.96)}
+.slot.empty{opacity:0;pointer-events:none}
+.piece{display:grid}
+.pc{width:100%;height:100%;border-radius:5px}
+.pc.on{background:var(--c);box-shadow:inset 0 3px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.2)}
+.ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:40;will-change:transform;opacity:.95}
+.float{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-size:30px;white-space:nowrap;text-shadow:0 3px 10px rgba(0,0,0,.45);pointer-events:none;z-index:50;animation:floatUp 1.1s ease-out forwards}
+@keyframes floatUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}20%{opacity:1;transform:translate(-50%,-70%) scale(1.12)}100%{opacity:0;transform:translate(-50%,-170%) scale(1)}}
+#over{position:fixed;inset:0;background:rgba(10,5,30,.7);display:flex;align-items:center;justify-content:center;z-index:60}
+#over[hidden]{display:none}
+.card{background:linear-gradient(160deg,#6a3fd1,#2d1866);border-radius:26px;padding:28px 24px;text-align:center;width:min(86vw,340px);box-shadow:0 20px 50px rgba(0,0,0,.5);animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.card h2{font-size:28px;margin-bottom:10px}
+.card p{font-size:18px;margin:6px 0}
+button{margin-top:18px;font-size:20px;font-weight:800;color:#2d1866;background:linear-gradient(#fff3a0,#ffd23f);border:0;border-radius:999px;padding:14px 30px;box-shadow:0 6px 0 #c99a00;cursor:pointer}
+button:active{transform:translateY(4px);box-shadow:0 2px 0 #c99a00}
+</style>
+</head>
+<body>
+<header>
+  <div class="box"><div class="label">Recorde</div><div class="value" id="best">0</div></div>
+  <div class="title">Blocos Mágicos</div>
+  <div class="box"><div class="label">Pontos</div><div class="value" id="score">0</div></div>
+</header>
+
+<main>
+  <div id="hint">Arraste uma peça até o tabuleiro</div>
+  <div id="board"><div id="grid"></div></div>
+</main>
+
+<div id="tray"></div>
+
+<div id="over" hidden>
+  <div class="card">
+    <h2>Fim de jogo!</h2>
+    <p>Pontos: <b id="final">0</b></p>
+    <p>Recorde: <b id="bestFinal">0</b></p>
+    <button id="again">Jogar de novo</button>
+  </div>
+</div>
+
+<script>
+const N=8, GAP=4, LIFT=64;
+const COLORS=['#ff6b9d','#ffb347','#ffe066','#6ee7a0','#58d5ff','#8e9bff','#d68bff'];
+const SHAPES=[
+  [[0,0]],
+  [[0,0],[0,1]],[[0,0],[1,0]],
+  [[0,0],[0,1],[0,2]],[[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[0,2],[0,3]],[[0,0],[1,0],[2,0],[3,0]],
+  [[0,0],[0,1],[1,0],[1,1]],
+  [[0,0],[1,0],[2,0],[2,1]],[[0,0],[0,1],[0,2],[1,0]],
+  [[0,0],[0,1],[0,2],[1,1],[2,1]],
+  [[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]
+];
+
+const gridEl=document.getElementById('grid');
+const trayEl=document.getElementById('tray');
+const scoreEl=document.getElementById('score');
+const bestEl=document.getElementById('best');
+const hintEl=document.getElementById('hint');
+const overEl=document.getElementById('over');
+
+let grid, tray, score, combo, best=0, cs=40, drag=null, ac=null;
+try{best=+localStorage.getItem('blocos-magicos-best')||0}catch(e){}
+bestEl.textContent=best;
+
+for(let i=0;i<N*N;i++){const d=document.createElement('div');d.className='cell';gridEl.appendChild(d);}
+
+function measure(){cs=(gridEl.getBoundingClientRect().width-GAP*(N-1))/N;}
+
+/* ---------- Sons suaves (sintetizados, estilo sino) ---------- */
+function ensureAudio(){
+  if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  if(ac&&ac.state==='suspended')ac.resume();
+}
+function tone(f,when,dur,vol,type){
+  if(!ac)return;
+  const t=ac.currentTime+when;
+  const o=ac.createOscillator(), g=ac.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(ac.destination);
+  o.start(t);o.stop(t+dur+0.05);
+}
+function bell(f,when,dur,vol){tone(f,when,dur,vol,'sine');tone(f*2.01,when,dur*0.5,vol*0.18,'sine');}
+function sfx(name){
+  try{
+    if(!ac)return;
+    if(name==='pick'){bell(880,0,.12,.05);}
+    if(name==='place'){bell(392,0,.35,.12);bell(587,.05,.3,.07);}
+    if(name==='clear'){bell(523,0,.5,.13);bell(659,.08,.5,.12);bell(784,.16,.6,.12);bell(1046,.26,.8,.1);}
+    if(name==='over'){bell(523,0,.6,.1);bell(392,.3,.6,.1);bell(294,.6,1.2,.09);}
+  }catch(e){}
+}
+function vibrate(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+
+/* ---------- Peças ---------- */
+function newPiece(){
+  return {cells:SHAPES[Math.floor(Math.random()*SHAPES.length)], color:COLORS[Math.floor(Math.random()*COLORS.length)]};
+}
+function dims(cells){return{w:Math.max(...cells.map(c=>c[1]))+1,h:Math.max(...cells.map(c=>c[0]))+1};}
+function pieceEl(cells,color,size,gap){
+  const {w,h}=dims(cells);
+  const set=new Set(cells.map(([r,c])=>r*10+c));
+  const el=document.createElement('div');
+  el.className='piece';
+  el.style.cssText=`grid-template-columns:repeat(${w},${size}px);grid-template-rows:repeat(${h},${size}px);gap:${gap}px;`;
+  el.style.setProperty('--c',color);
+  for(let r=0;r<h;r++)for(let c=0;c<w;c++){
+    const d=document.createElement('div');
+    d.className='pc'+(set.has(r*10+c)?' on':'');
+    el.appendChild(d);
+  }
+  return el;
+}
+
+/* ---------- Regras ---------- */
+function fits(cells,r0,c0){
+  return cells.every(([dr,dc])=>{
+    const r=r0+dr,c=c0+dc;
+    return r>=0&&r<N&&c>=0&&c<N&&!grid[r][c];
+  });
+}
+function canPlace(cells){
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(fits(cells,r,c))return true;
+  return false;
+}
+function anyMoves(){return tray.some(p=>p&&canPlace(p.cells));}
+
+function addScore(n){
+  score+=n;
+  scoreEl.textContent=score;
+  scoreEl.classList.remove('bump');void scoreEl.offsetWidth;scoreEl.classList.add('bump');
+  if(score>best){best=score;bestEl.textContent=best;}
+}
+function floatText(txt){
+  const el=document.createElement('div');
+  el.className='float';
+  el.textContent=txt;
+  el.style.color=['#fff3a0','#ffb3d1','#a8f0ff'][Math.floor(Math.random()*3)];
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1100);
+}
+
+function renderBoard(){
+  for(let i=0;i<N*N;i++){
+    const el=gridEl.children[i];
+    const v=grid[Math.floor(i/N)][i%N];
+    el.className='cell'+(v?' on':'');
+    if(v)el.style.setProperty('--c',v);
+  }
+}
+function renderTray(){
+  trayEl.innerHTML='';
+  tray.forEach((p,i)=>{
+    const slot=document.createElement('div');
+    slot.className='slot'+(p?'':' empty');
+    slot.dataset.i=i;
+    if(p)slot.appendChild(pieceEl(p.cells,p.color,18,3));
+    trayEl.appendChild(slot);
+  });
+}
+function refill(){
+  tray=[newPiece(),newPiece(),newPiece()];
+  renderTray();
+}
+
+function place(cells,r0,c0,color){
+  cells.forEach(([dr,dc])=>{grid[r0+dr][c0+dc]=color;});
+  addScore(cells.length);
+  hintEl.style.opacity=0;
+
+  const rows=[],cols=[];
+  for(let r=0;r<N;r++) if(grid[r].every(Boolean)) rows.push(r);
+  for(let c=0;c<N;c++){
+    let full=true;
+    for(let r=0;r<N;r++) if(!grid[r][c]){full=false;break;}
+    if(full)cols.push(c);
+  }
+  const kill=new Set();
+  rows.forEach(r=>{for(let c=0;c<N;c++)kill.add(r*N+c);});
+  cols.forEach(c=>{for(let r=0;r<N;r++)kill.add(r*N+c);});
+  renderBoard();
+
+  const lines=rows.length+cols.length;
+  let delay=0;
+  if(lines){
+    combo++;
+    const bonus=lines*10*combo;
+    addScore(bonus);
+    const msg=['Legal!','Uau!','Incrível!','Sensacional!'][Math.min(lines-1,3)];
+    floatText(`${msg} +${bonus}`);
+    sfx('clear');
+    vibrate([18,40,18]);
+    kill.forEach(i=>gridEl.children[i].classList.add('clear'));
+    delay=380;
+  }else{
+    combo=0;
+    sfx('place');
+    vibrate(10);
+  }
+
+  setTimeout(()=>{
+    kill.forEach(i=>{grid[Math.floor(i/N)][i%N]=null;});
+    renderBoard();
+    if(tray.every(p=>!p))refill();
+    if(!anyMoves())gameOver();
+  },delay);
+}
+
+function gameOver(){
+  sfx('over');
+  vibrate([60,80,60]);
+  try{localStorage.setItem('blocos-magicos-best',String(best));}catch(e){}
+  document.getElementById('final').textContent=score;
+  document.getElementById('bestFinal').textContent=best;
+  overEl.hidden=false;
+}
+
+function init(){
+  grid=Array.from({length:N},()=>Array(N).fill(null));
+  score=0;combo=0;
+  scoreEl.textContent=0;
+  hintEl.style.opacity=1;
+  renderBoard();
+  refill();
+}
+
+/* ---------- Arrastar ---------- */
+function clearPreview(){
+  for(const el of gridEl.children)el.classList.remove('prev');
+}
+function showPreview(cells,r0,c0,color,ok){
+  clearPreview();
+  if(!ok)return;
+  cells.forEach(([dr,dc])=>{
+    const el=gridEl.children[(r0+dr)*N+(c0+dc)];
+    el.classList.add('prev');
+    el.style.setProperty('--c',color);
+  });
+}
+function moveDrag(e){
+  const g=drag.ghost;
+  const gw=g.offsetWidth, gh=g.offsetHeight;
+  const lx=e.clientX-gw/2, ly=e.clientY-LIFT-gh/2;
+  g.style.transform=`translate(${lx}px,${ly}px)`;
+  const rect=gridEl.getBoundingClientRect();
+  const pitch=cs+GAP;
+  const c0=Math.round((lx-rect.left)/pitch);
+  const r0=Math.round((ly-rect.top)/pitch);
+  drag.r0=r0;drag.c0=c0;
+  drag.ok=fits(drag.p.cells,r0,c0);
+  showPreview(drag.p.cells,r0,c0,drag.p.color,drag.ok);
+}
+function endDrag(){
+  const d=drag;
+  drag=null;
+  d.ghost.remove();
+  clearPreview();
+  if(d.ok){
+    tray[d.i]=null;
+    renderTray();
+    place(d.p.cells,d.r0,d.c0,d.p.color);
+  }
+}
+
+trayEl.addEventListener('pointerdown',e=>{
+  const slot=e.target.closest('.slot');
+  if(!slot||drag||overEl.hidden===false)return;
+  const i=+slot.dataset.i;
+  const p=tray[i];
+  if(!p)return;
+  e.preventDefault();
+  ensureAudio();
+  sfx('pick');
+  vibrate(8);
+  const g=pieceEl(p.cells,p.color,cs,GAP);
+  g.classList.add('ghost');
+  document.body.appendChild(g);
+  drag={i,p,ghost:g,ok:false,r0:0,c0:0};
+  moveDrag(e);
+});
+window.addEventListener('pointermove',e=>{if(drag)moveDrag(e);});
+window.addEventListener('pointerup',()=>{if(drag)endDrag();});
+window.addEventListener('pointercancel',()=>{if(drag){drag.ghost.remove();drag=null;clearPreview();}});
+window.addEventListener('resize',measure);
+
+document.getElementById('again').addEventListener('click',()=>{
+  overEl.hidden=true;
+  init();
+});
+
+measure();
+init();
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
+</body>
+</html>
